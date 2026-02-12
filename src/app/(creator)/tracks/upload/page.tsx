@@ -76,7 +76,7 @@ export default function UploadTrackPage() {
         throw new Error(data.error || "Failed to get upload URL");
       }
 
-      const { url: signedUrl, path: storagePath, bucket } = await signRes.json();
+      const { url: signedUrl, path: storagePath } = await signRes.json();
 
       // 2. Upload file to Supabase storage
       setStep("uploading");
@@ -90,10 +90,6 @@ export default function UploadTrackPage() {
         throw new Error("File upload to storage failed");
       }
 
-      // Build the public audio URL
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const audioUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${storagePath}`;
-
       // 3. Create track record
       setStep("saving");
       const trackRes = await fetch("/api/tracks", {
@@ -102,7 +98,7 @@ export default function UploadTrackPage() {
         body: JSON.stringify({
           title,
           artistName,
-          audioUrl,
+          audioPath: storagePath,
           campaignId,
           durationSec: durationSec || 180,
         }),

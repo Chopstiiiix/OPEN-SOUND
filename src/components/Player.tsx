@@ -9,6 +9,16 @@ export default function Player({ track }: { track: any }) {
   const [pct, setPct] = useState(0);
   const [status, setStatus] = useState<string>("idle");
   const [rewardMsg, setRewardMsg] = useState<string>("");
+  const [playUrl, setPlayUrl] = useState<string>("");
+
+  useEffect(() => {
+    async function loadUrl() {
+      const res = await fetch(`/api/tracks/${track.id}/stream`);
+      const data = await res.json();
+      if (res.ok) setPlayUrl(data.url);
+    }
+    loadUrl();
+  }, [track.id]);
 
   const deviceHash = useMemo(() => {
     // super simple device hint for MVP (replace later)
@@ -77,7 +87,7 @@ export default function Player({ track }: { track: any }) {
 
   return (
     <div className="rounded-xl border border-white/10 p-4">
-      <audio ref={audioRef} src={track.audioUrl} controls className="w-full" />
+      <audio ref={audioRef} src={playUrl} controls className="w-full" />
 
       <div className="mt-4 flex items-center gap-3">
         <button
