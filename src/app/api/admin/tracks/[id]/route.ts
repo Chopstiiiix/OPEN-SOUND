@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/requireRole";
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireRole(["ADMIN"]);
+  const { id } = await params;
   const body = await req.json();
 
-  const track = await prisma.track.findUnique({ where: { id: params.id } });
+  const track = await prisma.track.findUnique({ where: { id } });
   if (!track) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const updated = await prisma.track.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(typeof body.isActive === "boolean" ? { isActive: body.isActive } : {}),
     },

@@ -4,11 +4,12 @@ import { requireRole } from "@/lib/auth/requireRole";
 
 const VALID_STATUSES = ["ACTIVE", "PAUSED", "ENDED"] as const;
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   await requireRole(["ADMIN"]);
+  const { id } = await params;
   const body = await req.json();
 
-  const campaign = await prisma.campaign.findUnique({ where: { id: params.id } });
+  const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
 
   const status = body.status as string | undefined;
@@ -17,7 +18,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const updated = await prisma.campaign.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(status ? { status: status as any } : {}),
     },
