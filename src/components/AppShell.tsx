@@ -1,17 +1,23 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import AppTopBar from "@/components/AppTopBar";
 import PlayerShell from "@/components/PlayerShell";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isLanding = pathname === "/";
+  const router = useRouter();
 
-  if (isLanding) {
-    return <>{children}</>;
-  }
+  // Signed-in users should never see the landing page — send them to /discover
+  useEffect(() => {
+    if (pathname === "/") {
+      router.replace("/discover");
+    }
+  }, [pathname, router]);
+
+  if (pathname === "/") return null;
 
   return (
     <PlayerShell>
