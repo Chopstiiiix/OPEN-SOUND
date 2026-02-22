@@ -242,7 +242,7 @@ export default function GlobalDock() {
             {/* Volume slider */}
             <div className="hidden md:flex items-center w-32 flex-shrink-0">
               <ElasticSlider
-                defaultValue={volume}
+                value={volume}
                 startingValue={0}
                 maxValue={100}
                 onChange={setVolume}

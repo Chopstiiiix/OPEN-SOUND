@@ -94,7 +94,7 @@ export default function Player({ track }: { track: PlayerTrack }) {
           {/* Volume control */}
           <div className="hidden sm:flex items-center w-36 flex-shrink-0">
             <ElasticSlider
-              defaultValue={volume}
+              value={volume}
               startingValue={0}
               maxValue={100}
               onChange={setVolume}

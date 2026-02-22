@@ -13,6 +13,7 @@ const MAX_OVERFLOW = 50;
 
 interface ElasticSliderProps {
   defaultValue?: number;
+  value?: number;
   startingValue?: number;
   maxValue?: number;
   className?: string;
@@ -25,6 +26,7 @@ interface ElasticSliderProps {
 
 export default function ElasticSlider({
   defaultValue = 50,
+  value,
   startingValue = 0,
   maxValue = 100,
   className = "",
@@ -40,6 +42,7 @@ export default function ElasticSlider({
     >
       <Slider
         defaultValue={defaultValue}
+        value={value}
         startingValue={startingValue}
         maxValue={maxValue}
         isStepped={isStepped}
@@ -54,6 +57,7 @@ export default function ElasticSlider({
 
 interface SliderProps {
   defaultValue: number;
+  value?: number;
   startingValue: number;
   maxValue: number;
   isStepped: boolean;
@@ -65,6 +69,7 @@ interface SliderProps {
 
 function Slider({
   defaultValue,
+  value: controlledValue,
   startingValue,
   maxValue,
   isStepped,
@@ -73,16 +78,14 @@ function Slider({
   rightIcon,
   onChange,
 }: SliderProps) {
-  const [value, setValue] = useState<number>(defaultValue);
+  const [internalValue, setInternalValue] = useState<number>(defaultValue);
+  const isControlled = controlledValue !== undefined;
+  const value = isControlled ? controlledValue : internalValue;
   const sliderRef = useRef<HTMLDivElement>(null);
   const [region, setRegion] = useState<"left" | "middle" | "right">("middle");
   const clientX = useMotionValue(0);
   const overflow = useMotionValue(0);
   const scale = useMotionValue(1);
-
-  useEffect(() => {
-    setValue(defaultValue);
-  }, [defaultValue]);
 
   useMotionValueEvent(clientX, "change", (latest: number) => {
     if (sliderRef.current) {
@@ -112,7 +115,7 @@ function Slider({
         newValue = Math.round(newValue / stepSize) * stepSize;
       }
       newValue = Math.min(Math.max(newValue, startingValue), maxValue);
-      setValue(newValue);
+      if (!isControlled) setInternalValue(newValue);
       onChange?.(newValue);
       clientX.jump(e.clientX);
     }
