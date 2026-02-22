@@ -2,6 +2,7 @@ import Image from "next/image";
 import Player from "@/components/Player";
 import Badge from "@/components/ui/Badge";
 import TrackCard from "@/components/TrackCard";
+import TrackOptionsMenu from "@/components/TrackOptionsMenu";
 import { DUMMY_TRACKS } from "@/lib/data/dummyData";
 import { formatDuration } from "@/lib/utils";
 
@@ -68,7 +69,17 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
           </div>
           <div className="text-center sm:text-left">
             <Badge variant="active" className="mb-3">Campaign Active</Badge>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">{t.title}</h1>
+            <div className="flex items-center gap-2 justify-center sm:justify-start">
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">{t.title}</h1>
+              <TrackOptionsMenu
+                track={{
+                  id: t.id,
+                  title: t.title,
+                  artistName: t.artistName,
+                  coverUrl: t.coverUrl ?? null,
+                }}
+              />
+            </div>
             <p className="text-lg text-white/60 mt-1">{t.artistName}</p>
             <p className="text-sm text-white/40 mt-2">{formatDuration(t.durationSec)}</p>
           </div>

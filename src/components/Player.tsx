@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { formatDuration, cn } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
@@ -7,6 +9,9 @@ import ProgressBar from "@/components/ui/ProgressBar";
 
 type PlayerTrack = {
   id: string;
+  title?: string;
+  artistName?: string;
+  coverUrl?: string | null;
   durationSec: number;
   campaign?: {
     minListenSeconds?: number;
@@ -23,6 +28,7 @@ export default function Player({ track }: { track: PlayerTrack }) {
   const [rewardMsg, setRewardMsg] = useState<string>("");
   const [playUrl, setPlayUrl] = useState<string>("");
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showDock, setShowDock] = useState(false);
   const [audioDuration, setAudioDuration] = useState(track.durationSec || 0);
   const [currentTime, setCurrentTime] = useState(0);
 
@@ -50,6 +56,7 @@ export default function Player({ track }: { track: PlayerTrack }) {
     const data = await res.json();
     setSessionId(data.sessionId);
     setStatus("playing");
+    setShowDock(true);
     audioRef.current?.play();
   }
 
@@ -103,6 +110,7 @@ export default function Player({ track }: { track: PlayerTrack }) {
     const a = audioRef.current;
     if (!a) return;
     if (a.paused) {
+      setShowDock(true);
       a.play();
       setIsPlaying(true);
     } else {
@@ -130,6 +138,9 @@ export default function Player({ track }: { track: PlayerTrack }) {
   const minListenSec = track.campaign?.minListenSeconds || 30;
   const costPerListen = track.campaign?.costPerListen;
   const sessionProgress = sessionId ? Math.min(100, Math.round((progressSec / minListenSec) * 100)) : 0;
+  const coverUrl = track.coverUrl || `https://picsum.photos/seed/${track.id}/120/120`;
+  const trackTitle = track.title || "Now Playing";
+  const artistName = track.artistName || "Open Sound";
 
   return (
     <div className="space-y-4">
@@ -268,6 +279,61 @@ export default function Player({ track }: { track: PlayerTrack }) {
             {rewardMsg}
           </div>
         )}
+      </div>
+
+      {/* Bottom media dock */}
+      <div
+        className={cn(
+          "fixed left-0 right-0 bottom-0 z-50 transition-transform duration-300 ease-out",
+          "md:left-24",
+          showDock ? "translate-y-0" : "translate-y-full"
+        )}
+      >
+        <div className="mx-3 mb-3 rounded-2xl border border-white/[0.12] bg-[#191d22]/95 backdrop-blur-xl shadow-[0_20px_60px_rgba(0,0,0,0.45)]">
+          <div className="h-1 w-full overflow-hidden rounded-t-2xl bg-white/[0.08]">
+            <div
+              className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all"
+              style={{ width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
+            />
+          </div>
+
+          <div className="px-3 py-2.5 flex items-center gap-3">
+            <Link href={`/track/${track.id}`} className="relative w-10 h-10 rounded-md overflow-hidden flex-shrink-0">
+              <Image src={coverUrl} alt={trackTitle} fill className="object-cover" sizes="40px" />
+            </Link>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold truncate">{trackTitle}</p>
+              <p className="text-xs text-white/60 truncate">{artistName}</p>
+            </div>
+
+            <div className="text-[11px] text-white/55 tabular-nums hidden sm:block">
+              {formatDuration(Math.floor(currentTime))} / {formatDuration(Math.floor(audioDuration))}
+            </div>
+
+            <button
+              onClick={togglePlay}
+              disabled={!playUrl}
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0",
+                "disabled:opacity-30 disabled:cursor-not-allowed",
+                isPlaying ? "btn-gradient" : "bg-white/12 hover:bg-white/20"
+              )}
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

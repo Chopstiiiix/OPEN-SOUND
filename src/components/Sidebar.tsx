@@ -1,8 +1,9 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -78,6 +79,45 @@ const primaryRoutes = new Set(["/discover", "/wallet"]);
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const [playlistVersion, setPlaylistVersion] = useState(0);
+
+  const playlistStorageKey = useMemo(
+    () => `open-sound-playlists:${user?.id ?? "anon"}`,
+    [user?.id]
+  );
+
+  const playlists = useMemo(() => {
+    void playlistVersion;
+    if (typeof window === "undefined") return [] as Array<{ id: string; name: string }>;
+    try {
+      const raw = localStorage.getItem(playlistStorageKey);
+      if (!raw) return [] as Array<{ id: string; name: string }>;
+      const parsed = JSON.parse(raw) as Array<{ id: string; name: string }>;
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [] as Array<{ id: string; name: string }>;
+    }
+  }, [playlistStorageKey, playlistVersion]);
+
+  function createPlaylist() {
+    const rawName = window.prompt("Playlist name");
+    if (!rawName) return;
+    const name = rawName.trim();
+    if (!name) return;
+
+    const next = [
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name },
+      ...playlists,
+    ];
+
+    try {
+      localStorage.setItem(playlistStorageKey, JSON.stringify(next));
+      setPlaylistVersion((v) => v + 1);
+    } catch {
+      // ignore storage write failures
+    }
+  }
 
   return (
     <>
@@ -109,23 +149,58 @@ export default function Sidebar() {
 
           <div className="space-y-1">
             {navItems.filter((item) => !primaryRoutes.has(item.href)).map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-[10px] font-medium transition-colors",
-                  isActive
-                    ? "bg-white/[0.12] text-white"
-                    : "text-white/45 hover:text-white hover:bg-white/[0.06]"
-                )}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-[10px] font-medium transition-colors",
+                    isActive
+                      ? "bg-white/[0.12] text-white"
+                      : "text-white/45 hover:text-white hover:bg-white/[0.06]"
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
             })}
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-white/[0.08]">
+            <div className="flex items-center justify-between px-1 mb-2">
+              <span className="text-[10px] font-semibold text-white/55 uppercase tracking-wide">
+                Playlists
+              </span>
+              <button
+                onClick={createPlaylist}
+                className="w-5 h-5 rounded-md bg-white/[0.08] hover:bg-white/[0.14] text-white/75 hover:text-white flex items-center justify-center transition-colors"
+                aria-label="Create playlist"
+              >
+                +
+              </button>
+            </div>
+            <div className="space-y-1 max-h-40 overflow-y-auto no-scrollbar">
+              {playlists.length === 0 ? (
+                <p className="text-[10px] text-white/35 px-1">
+                  Create a playlist to pin it here.
+                </p>
+              ) : (
+                playlists.map((playlist) => (
+                  <button
+                    key={playlist.id}
+                    className="w-full flex items-center gap-1.5 px-1.5 py-1.5 rounded-md text-[10px] text-white/65 hover:text-white hover:bg-white/[0.06] transition-colors"
+                    title={playlist.name}
+                  >
+                    <span className="w-4 h-4 rounded-sm bg-amber-500/20 text-amber-300 flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                      {playlist.name.slice(0, 1).toUpperCase()}
+                    </span>
+                    <span className="truncate">{playlist.name}</span>
+                  </button>
+                ))
+              )}
+            </div>
           </div>
         </nav>
 
