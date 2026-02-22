@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { DUMMY_TRACKS } from "@/lib/data/dummyData";
+import HeroPlasma from "@/components/HeroPlasma";
 
 function HeroTrackCard({ track }: { track: (typeof DUMMY_TRACKS)[number] }) {
   return (
@@ -52,26 +53,31 @@ export default function Home() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
         <section className="rounded-3xl border border-white/[0.08] bg-surface/80 overflow-hidden">
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-0">
-            <div className="p-8 sm:p-10 gradient-mesh">
-              <p className="text-[11px] tracking-[0.2em] uppercase text-white/45">Discover and Earn</p>
-              <h1 className="mt-3 text-4xl sm:text-5xl font-bold leading-tight">
-                The music feed that <span className="text-gradient">pays you</span> to listen.
-              </h1>
-              <p className="mt-4 text-white/60 max-w-xl">
-                Open Sound gives fans rewards for qualified plays while helping creators fund promotion campaigns.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <SignUpButton>
-                  <button className="btn-gradient text-sm font-semibold px-6 py-3 rounded-full cursor-pointer">
-                    Create account
-                  </button>
-                </SignUpButton>
-                <Link
-                  href="/discover"
-                  className="text-sm font-semibold px-6 py-3 rounded-full border border-white/[0.14] hover:bg-white/[0.04] transition-colors"
-                >
-                  Preview feed
-                </Link>
+            <div className="relative overflow-hidden">
+              <div className="absolute inset-0">
+                <HeroPlasma />
+              </div>
+              <div className="relative z-10 p-8 sm:p-10">
+                <p className="text-[11px] tracking-[0.2em] uppercase text-white/45">Discover and Earn</p>
+                <h1 className="mt-3 text-4xl sm:text-5xl font-bold leading-tight">
+                  The music feed that <span className="text-gradient">pays you</span> to listen.
+                </h1>
+                <p className="mt-4 text-white/60 max-w-xl">
+                  Open Sound gives fans rewards for qualified plays while helping creators fund promotion campaigns.
+                </p>
+                <div className="mt-7 flex flex-wrap gap-3">
+                  <SignUpButton>
+                    <button className="btn-gradient text-sm font-semibold px-6 py-3 rounded-full cursor-pointer">
+                      Create account
+                    </button>
+                  </SignUpButton>
+                  <Link
+                    href="/discover"
+                    className="text-sm font-semibold px-6 py-3 rounded-full border border-white/[0.14] hover:bg-white/[0.04] transition-colors"
+                  >
+                    Preview feed
+                  </Link>
+                </div>
               </div>
             </div>
 
