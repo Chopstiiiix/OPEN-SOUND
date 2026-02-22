@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   animate,
   motion,
@@ -187,15 +187,12 @@ function Slider({
               }
               return "center";
             }),
-            height: useTransform(scale, [1, 1.2], [6, 12]),
-            marginTop: useTransform(scale, [1, 1.2], [0, -3]),
-            marginBottom: useTransform(scale, [1, 1.2], [0, -3]),
           }}
-          className="flex flex-grow"
+          className="flex flex-grow h-1.5 hover:h-2.5 transition-[height]"
         >
           <div className="relative h-full flex-grow overflow-hidden rounded-full bg-white/[0.12]">
             <div
-              className="absolute h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
               style={{ width: `${getRangePercentage()}%` }}
             />
           </div>
