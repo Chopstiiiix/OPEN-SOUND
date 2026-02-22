@@ -27,7 +27,7 @@ export default function QuickPicksAnimated({ tracks }: { tracks: QuickPickTrack[
         <div className="flex items-center gap-3 min-w-0">
           <div className="relative w-12 h-12 rounded-md overflow-hidden flex-shrink-0 border border-white/[0.08]">
             <Image
-              src={item.coverUrl || `https://picsum.photos/seed/${item.id}/120/120`}
+              src={item.coverUrl || "/covers/1.jpg"}
               alt={item.title}
               fill
               className="object-cover"

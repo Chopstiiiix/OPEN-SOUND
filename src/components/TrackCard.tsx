@@ -22,7 +22,7 @@ export default function TrackCard({
   track: TrackLike;
   showPoints?: boolean;
 }) {
-  const coverUrl = track.coverUrl || `https://picsum.photos/seed/${track.id}/300/300`;
+  const coverUrl = track.coverUrl || "/covers/1.jpg";
   const points = track.pointsPerListen || track.campaign?.costPerListen;
 
   return (

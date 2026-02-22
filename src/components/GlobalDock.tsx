@@ -24,8 +24,7 @@ export default function GlobalDock() {
 
   if (!track || !showDock) return null;
 
-  const coverUrl =
-    track.coverUrl || `https://picsum.photos/seed/${track.id}/120/120`;
+  const coverUrl = track.coverUrl || "/covers/1.jpg";
   const trackTitle = track.title || "Now Playing";
   const artistName = track.artistName || "Open Sound";
 

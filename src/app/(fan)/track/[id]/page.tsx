@@ -36,7 +36,7 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
   }
 
   const t = data.track;
-  const coverUrl = t.coverUrl || `https://picsum.photos/seed/${t.id}/600/600`;
+  const coverUrl = t.coverUrl || "/covers/1.jpg";
   const relatedTracks = DUMMY_TRACKS.filter((dt) => dt.id !== t.id).slice(0, 4);
 
   return (
