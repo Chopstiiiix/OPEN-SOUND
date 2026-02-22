@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,8 @@ export default function TrackOptionsMenu({ track, className }: Props) {
   const [open, setOpen] = useState(false);
   const [flash, setFlash] = useState<string>("");
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
 
   const userKey = user?.id ?? "anon";
   const playlistsKey = useMemo(() => `open-sound-playlists:${userKey}`, [userKey]);
@@ -50,23 +53,45 @@ export default function TrackOptionsMenu({ track, className }: Props) {
   const libraryKey = useMemo(() => `open-sound-library:${userKey}`, [userKey]);
   const queueKey = useMemo(() => `open-sound-queue:${userKey}`, [userKey]);
 
+  function updateMenuPosition() {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const right = Math.max(12, viewportWidth - rect.right);
+    const top = rect.bottom + 8;
+    setMenuPos({ top, right });
+  }
+
   useEffect(() => {
     if (!open) return;
+    updateMenuPosition();
 
     function handleClickOutside(e: MouseEvent) {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target as Node)) setOpen(false);
+      const menu = menuRef.current;
+      const trigger = triggerRef.current;
+      const target = e.target as Node;
+      if (menu?.contains(target) || trigger?.contains(target)) return;
+      setOpen(false);
     }
 
     function handleEsc(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
 
+    function handleReposition() {
+      updateMenuPosition();
+    }
+
     window.addEventListener("mousedown", handleClickOutside);
     window.addEventListener("keydown", handleEsc);
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
     return () => {
       window.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("keydown", handleEsc);
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
     };
   }, [open]);
 
@@ -155,6 +180,7 @@ export default function TrackOptionsMenu({ track, className }: Props) {
   return (
     <div ref={menuRef} className={cn("relative", className)}>
       <button
+        ref={triggerRef}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -170,15 +196,22 @@ export default function TrackOptionsMenu({ track, className }: Props) {
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute right-0 top-10 w-56 rounded-xl border border-white/[0.12] bg-[#161b22]/95 backdrop-blur-xl p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.5)] z-50">
-          <button onClick={shareTrack} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Share</button>
-          <button onClick={addToLibrary} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to your library</button>
-          <button onClick={addToPlaylist} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to playlist</button>
-          <button onClick={addToQueue} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to queue</button>
-          <button onClick={goToArtistPage} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Go to artist page</button>
-        </div>
-      )}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPos.top, right: menuPos.right }}
+            className="fixed w-56 rounded-xl border border-white/[0.12] bg-[#161b22]/95 backdrop-blur-xl p-1.5 shadow-[0_16px_42px_rgba(0,0,0,0.5)] z-[9999]"
+          >
+            <button onClick={shareTrack} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Share</button>
+            <button onClick={addToLibrary} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to your library</button>
+            <button onClick={addToPlaylist} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to playlist</button>
+            <button onClick={addToQueue} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Add to queue</button>
+            <button onClick={goToArtistPage} className="w-full text-left px-3 py-2 rounded-lg text-sm text-white/85 hover:bg-white/[0.08]">Go to artist page</button>
+          </div>,
+          document.body
+        )}
 
       {flash && (
         <div className="absolute right-0 -top-8 px-2 py-1 rounded-md bg-amber-500/20 border border-amber-500/30 text-[11px] text-amber-200 whitespace-nowrap">
