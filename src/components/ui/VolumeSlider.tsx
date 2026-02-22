@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 
 function VolumeIcon({ volume, isMuted }: { volume: number; isMuted: boolean }) {
   if (isMuted || volume === 0) {
@@ -34,7 +34,6 @@ interface VolumeSliderProps {
   isMuted: boolean;
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
-  iconSize?: "sm" | "md";
 }
 
 export default function VolumeSlider({
@@ -42,59 +41,124 @@ export default function VolumeSlider({
   isMuted,
   onVolumeChange,
   onToggleMute,
-  iconSize = "sm",
 }: VolumeSliderProps) {
   const pct = isMuted ? 0 : volume;
-  const iconClass = iconSize === "md" ? "text-white/60 hover:text-white" : "text-white/50 hover:text-white";
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [iconPop, setIconPop] = useState(false);
+
+  const handleMuteClick = useCallback(() => {
+    setIconPop(true);
+    onToggleMute();
+    setTimeout(() => setIconPop(false), 300);
+  }, [onToggleMute]);
+
+  const updateFromPointer = useCallback(
+    (clientX: number) => {
+      if (!trackRef.current) return;
+      const { left, width } = trackRef.current.getBoundingClientRect();
+      const val = Math.min(100, Math.max(0, Math.round(((clientX - left) / width) * 100)));
+      onVolumeChange(val);
+    },
+    [onVolumeChange]
+  );
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setDragging(true);
+      updateFromPointer(e.clientX);
+    },
+    [updateFromPointer]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.buttons > 0) updateFromPointer(e.clientX);
+    },
+    [updateFromPointer]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setDragging(false);
+  }, []);
+
+  const active = hovered || dragging;
 
   return (
-    <div className="flex items-center gap-2 group/vol">
+    <div
+      className="flex items-center gap-2 w-full select-none touch-none"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        transform: active ? "scale(1.08)" : "scale(1)",
+        opacity: active ? 1 : 0.75,
+        transition: "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease",
+      }}
+    >
+      {/* Mute button with pop animation */}
       <button
-        onClick={onToggleMute}
-        className={`${iconClass} transition-colors flex-shrink-0`}
+        onClick={handleMuteClick}
+        className="text-white/50 hover:text-white transition-colors flex-shrink-0"
         aria-label={isMuted ? "Unmute" : "Mute"}
+        style={{
+          transform: iconPop ? "scale(1.35)" : "scale(1)",
+          transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}
       >
         <VolumeIcon volume={volume} isMuted={isMuted} />
       </button>
-      <div className="relative flex items-center w-full">
-        {/* Track background */}
-        <div className="absolute inset-y-0 flex items-center w-full pointer-events-none">
-          <div className="w-full h-1 rounded-full bg-white/[0.12] group-hover/vol:h-1.5 transition-all">
-            <div
-              className="h-full rounded-full bg-white group-hover/vol:bg-amber-400 transition-colors"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+
+      {/* Slider track */}
+      <div
+        ref={trackRef}
+        className="relative flex-1 cursor-pointer"
+        style={{ height: "16px", display: "flex", alignItems: "center" }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        {/* Background track */}
+        <div
+          className="w-full rounded-full bg-white/[0.15] overflow-hidden"
+          style={{
+            height: active ? "5px" : "3px",
+            transition: "height 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          }}
+        >
+          {/* Fill */}
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${pct}%`,
+              background: active
+                ? "linear-gradient(to right, #fbbf24, #f97316)"
+                : "rgba(255,255,255,0.8)",
+              transition: dragging
+                ? "background 0.2s ease"
+                : "width 0.15s ease, background 0.2s ease",
+            }}
+          />
         </div>
-        {/* Invisible range input on top */}
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={1}
-          value={pct}
-          onChange={(e) => onVolumeChange(Number(e.target.value))}
-          className="relative z-10 w-full h-4 appearance-none bg-transparent cursor-pointer
-            [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-3
-            [&::-webkit-slider-thumb]:h-3
-            [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-white
-            [&::-webkit-slider-thumb]:shadow-md
-            [&::-webkit-slider-thumb]:opacity-0
-            [&::-webkit-slider-thumb]:group-hover/vol:opacity-100
-            [&::-webkit-slider-thumb]:transition-opacity
-            [&::-moz-range-thumb]:w-3
-            [&::-moz-range-thumb]:h-3
-            [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-white
-            [&::-moz-range-thumb]:border-0
-            [&::-moz-range-thumb]:shadow-md
-            [&::-moz-range-thumb]:opacity-0
-            [&::-moz-range-thumb]:group-hover/vol:opacity-100
-            [&::-moz-range-thumb]:transition-opacity
-            [&::-moz-range-track]:bg-transparent
-          "
+
+        {/* Thumb */}
+        <div
+          style={{
+            position: "absolute",
+            left: `${pct}%`,
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "10px",
+            height: "10px",
+            borderRadius: "50%",
+            background: "white",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+            opacity: active ? 1 : 0,
+            transition:
+              "opacity 0.2s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+            pointerEvents: "none",
+          }}
         />
       </div>
     </div>
