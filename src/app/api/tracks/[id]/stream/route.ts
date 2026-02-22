@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { supabaseAdmin } from "@/lib/storage/supabaseAdmin";
 
+// Local silent demo audio for dummy tracks
+const DEMO_AUDIO_URL = "/demo-audio.mp3";
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  // Dummy tracks get a demo audio file so the player works without real uploads
+  if (id.startsWith("dummy-")) {
+    return NextResponse.json({ url: DEMO_AUDIO_URL });
+  }
+
   const track = await prisma.track.findUnique({
     where: { id },
     select: { audioPath: true, audioUrl: true },
