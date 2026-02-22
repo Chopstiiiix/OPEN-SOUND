@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { formatDuration, cn } from "@/lib/utils";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
+import ElasticSlider from "@/components/ui/ElasticSlider";
 
 type PlayerTrack = {
   id: string;
@@ -31,6 +32,29 @@ export default function Player({ track }: { track: PlayerTrack }) {
   const [showDock, setShowDock] = useState(false);
   const [audioDuration, setAudioDuration] = useState(track.durationSec || 0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [volume, setVolume] = useState(80);
+  const [isMuted, setIsMuted] = useState(false);
+  const prevVolume = useRef(80);
+
+  function handleVolumeChange(val: number) {
+    setVolume(val);
+    setIsMuted(val === 0);
+    if (audioRef.current) audioRef.current.volume = val / 100;
+  }
+
+  function toggleMute() {
+    if (isMuted) {
+      const restored = prevVolume.current > 0 ? prevVolume.current : 80;
+      setVolume(restored);
+      setIsMuted(false);
+      if (audioRef.current) audioRef.current.volume = restored / 100;
+    } else {
+      prevVolume.current = volume;
+      setVolume(0);
+      setIsMuted(true);
+      if (audioRef.current) audioRef.current.volume = 0;
+    }
+  }
 
   useEffect(() => {
     async function loadUrl() {
@@ -152,7 +176,10 @@ export default function Player({ track }: { track: PlayerTrack }) {
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onLoadedMetadata={() => {
-          if (audioRef.current?.duration) setAudioDuration(audioRef.current.duration);
+          if (audioRef.current) {
+            if (audioRef.current.duration) setAudioDuration(audioRef.current.duration);
+            audioRef.current.volume = volume / 100;
+          }
         }}
         className="hidden"
       />
@@ -199,6 +226,39 @@ export default function Player({ track }: { track: PlayerTrack }) {
               <span>{formatDuration(Math.floor(currentTime))}</span>
               <span>{formatDuration(Math.floor(audioDuration))}</span>
             </div>
+          </div>
+
+          {/* Volume control */}
+          <div className="hidden sm:flex items-center w-36 flex-shrink-0">
+            <ElasticSlider
+              defaultValue={volume}
+              startingValue={0}
+              maxValue={100}
+              onChange={handleVolumeChange}
+              leftIcon={
+                <button onClick={toggleMute} className="text-white/60 hover:text-white transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
+                  {isMuted || volume === 0 ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                      <line x1="22" x2="16" y1="9" y2="15" />
+                      <line x1="16" x2="22" y1="9" y2="15" />
+                    </svg>
+                  ) : volume < 50 ? (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                    </svg>
+                  ) : (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                    </svg>
+                  )}
+                </button>
+              }
+              rightIcon={<></>}
+            />
           </div>
         </div>
       </div>
@@ -309,6 +369,39 @@ export default function Player({ track }: { track: PlayerTrack }) {
 
             <div className="text-[11px] text-white/55 tabular-nums hidden sm:block">
               {formatDuration(Math.floor(currentTime))} / {formatDuration(Math.floor(audioDuration))}
+            </div>
+
+            {/* Dock volume control */}
+            <div className="hidden md:flex items-center w-28 flex-shrink-0">
+              <ElasticSlider
+                defaultValue={volume}
+                startingValue={0}
+                maxValue={100}
+                onChange={handleVolumeChange}
+                leftIcon={
+                  <button onClick={toggleMute} className="text-white/60 hover:text-white transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
+                    {isMuted || volume === 0 ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                        <line x1="22" x2="16" y1="9" y2="15" />
+                        <line x1="16" x2="22" y1="9" y2="15" />
+                      </svg>
+                    ) : volume < 50 ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11 5 6 9H2v6h4l5 4V5Z" />
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                      </svg>
+                    )}
+                  </button>
+                }
+                rightIcon={<></>}
+              />
             </div>
 
             <button
