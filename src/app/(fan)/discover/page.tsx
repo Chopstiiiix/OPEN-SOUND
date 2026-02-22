@@ -1,5 +1,6 @@
 import TrackCard from "@/components/TrackCard";
 import QuickPicksAnimated from "@/components/QuickPicksAnimated";
+import PillNav from "@/components/ui/PillNav";
 import { DUMMY_TRACKS } from "@/lib/data/dummyData";
 
 type ApiTrack = {
@@ -10,18 +11,18 @@ type ApiTrack = {
   durationSec?: number;
 };
 
-const chips = [
-  "Podcasts",
-  "Energize",
-  "Workout",
-  "Feel good",
-  "Commute",
-  "Relax",
-  "Party",
-  "Romance",
-  "Sad",
-  "Focus",
-  "Sleep",
+const chipItems = [
+  { label: "Podcasts", href: "#podcasts" },
+  { label: "Energize", href: "#energize" },
+  { label: "Workout", href: "#workout" },
+  { label: "Feel good", href: "#feel-good" },
+  { label: "Commute", href: "#commute" },
+  { label: "Relax", href: "#relax" },
+  { label: "Party", href: "#party" },
+  { label: "Romance", href: "#romance" },
+  { label: "Sad", href: "#sad" },
+  { label: "Focus", href: "#focus" },
+  { label: "Sleep", href: "#sleep" },
 ];
 
 async function getTracks(): Promise<ApiTrack[] | null> {
@@ -67,16 +68,15 @@ export default async function Discover() {
   return (
     <div className="min-h-screen bg-background text-foreground animate-fade-in">
       <div className="space-y-8">
-        <div className="flex flex-wrap gap-2">
-          {chips.map((chip) => (
-            <button
-              key={chip}
-              className="px-3 py-1.5 rounded-lg text-sm text-white/80 bg-white/[0.11] hover:bg-white/[0.18] transition-colors"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
+        <PillNav
+          items={chipItems}
+          ease="power2.easeOut"
+          baseColor="#f59e0b"
+          pillColor="rgba(255, 255, 255, 0.11)"
+          hoveredPillTextColor="#000000"
+          pillTextColor="rgba(255, 255, 255, 0.8)"
+          initialLoadAnimation={true}
+        />
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-2">
