@@ -1,189 +1,48 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { formatDuration, cn } from "@/lib/utils";
+import { usePlayer, type PlayerTrack } from "@/contexts/PlayerContext";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
 import ElasticSlider from "@/components/ui/ElasticSlider";
 
-type PlayerTrack = {
-  id: string;
-  title?: string;
-  artistName?: string;
-  coverUrl?: string | null;
-  durationSec: number;
-  campaign?: {
-    minListenSeconds?: number;
-    costPerListen?: number;
-  };
-};
-
 export default function Player({ track }: { track: PlayerTrack }) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [progressSec, setProgressSec] = useState(0);
-  const [pct, setPct] = useState(0);
-  const [status, setStatus] = useState<string>("idle");
-  const [rewardMsg, setRewardMsg] = useState<string>("");
-  const [playUrl, setPlayUrl] = useState<string>("");
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showDock, setShowDock] = useState(false);
-  const [audioDuration, setAudioDuration] = useState(track.durationSec || 0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [volume, setVolume] = useState(80);
-  const [isMuted, setIsMuted] = useState(false);
-  const prevVolume = useRef(80);
+  const {
+    isPlaying,
+    currentTime,
+    audioDuration,
+    volume,
+    isMuted,
+    playUrl,
+    sessionId,
+    progressSec,
+    pct,
+    status,
+    rewardMsg,
+    loadTrack,
+    togglePlay,
+    seek,
+    setVolume,
+    toggleMute,
+    startSession,
+    claimReward,
+  } = usePlayer();
 
-  function handleVolumeChange(val: number) {
-    setVolume(val);
-    setIsMuted(val === 0);
-    if (audioRef.current) audioRef.current.volume = val / 100;
-  }
-
-  function toggleMute() {
-    if (isMuted) {
-      const restored = prevVolume.current > 0 ? prevVolume.current : 80;
-      setVolume(restored);
-      setIsMuted(false);
-      if (audioRef.current) audioRef.current.volume = restored / 100;
-    } else {
-      prevVolume.current = volume;
-      setVolume(0);
-      setIsMuted(true);
-      if (audioRef.current) audioRef.current.volume = 0;
-    }
-  }
-
+  // Load this track into the global player when the track page mounts
   useEffect(() => {
-    async function loadUrl() {
-      const res = await fetch(`/api/tracks/${track.id}/stream`);
-      const data = await res.json();
-      if (res.ok) setPlayUrl(data.url);
-    }
-    loadUrl();
+    loadTrack(track);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [track.id]);
-
-  const deviceHash = useMemo(() => {
-    return `${navigator.platform}-${navigator.language}-${screen.width}x${screen.height}`;
-  }, []);
-
-  async function startSession() {
-    setRewardMsg("");
-    setStatus("starting");
-    const res = await fetch("/api/player/start", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ trackId: track.id, deviceHash }),
-    });
-    const data = await res.json();
-    setSessionId(data.sessionId);
-    setStatus("playing");
-    setShowDock(true);
-    audioRef.current?.play();
-  }
-
-  const heartbeat = useCallback(async (sid: string, prog: number, comp: number) => {
-    await fetch("/api/player/heartbeat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: sid, progressSec: prog, completionPct: comp }),
-    });
-  }, []);
-
-  async function complete(sid: string) {
-    setStatus("completing");
-    const res = await fetch("/api/player/complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: sid, trackId: track.id }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setRewardMsg(`No reward: ${data.reason || data.error || "unknown"}`);
-      setStatus("done");
-      return;
-    }
-    setRewardMsg(`+${data.reward.amount} points`);
-    setStatus("rewarded");
-  }
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a) return;
-
-    const timer = setInterval(() => {
-      if (!sessionId) return;
-      if (!audioRef.current) return;
-
-      const current = Math.floor(audioRef.current.currentTime || 0);
-      const duration = Math.max(1, Math.floor(audioRef.current.duration || track.durationSec || 1));
-      const completion = Math.min(100, Math.floor((current / duration) * 100));
-
-      setProgressSec(current);
-      setPct(completion);
-
-      if (current > 0 && current % 5 === 0) heartbeat(sessionId, current, completion);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [sessionId, track.durationSec, heartbeat]);
-
-  function togglePlay() {
-    const a = audioRef.current;
-    if (!a) return;
-    if (a.paused) {
-      setShowDock(true);
-      a.play();
-      setIsPlaying(true);
-    } else {
-      a.pause();
-      setIsPlaying(false);
-    }
-  }
-
-  function handleTimeUpdate() {
-    const a = audioRef.current;
-    if (!a) return;
-    setCurrentTime(a.currentTime);
-    if (a.duration) setAudioDuration(a.duration);
-  }
-
-  function handleSeek(e: React.MouseEvent<HTMLDivElement>) {
-    const a = audioRef.current;
-    if (!a || !a.duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ratio = x / rect.width;
-    a.currentTime = ratio * a.duration;
-  }
 
   const minListenSec = track.campaign?.minListenSeconds || 30;
   const costPerListen = track.campaign?.costPerListen;
-  const sessionProgress = sessionId ? Math.min(100, Math.round((progressSec / minListenSec) * 100)) : 0;
-  const coverUrl = track.coverUrl || `https://picsum.photos/seed/${track.id}/120/120`;
-  const trackTitle = track.title || "Now Playing";
-  const artistName = track.artistName || "Open Sound";
+  const sessionProgress = sessionId
+    ? Math.min(100, Math.round((progressSec / minListenSec) * 100))
+    : 0;
 
   return (
     <div className="space-y-4">
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        src={playUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onLoadedMetadata={() => {
-          if (audioRef.current) {
-            if (audioRef.current.duration) setAudioDuration(audioRef.current.duration);
-            audioRef.current.volume = volume / 100;
-          }
-        }}
-        className="hidden"
-      />
-
       {/* Custom player controls */}
       <div className="rounded-2xl p-5 bg-surface/85 border border-white/[0.08]">
         <div className="flex items-center gap-4">
@@ -194,7 +53,9 @@ export default function Player({ track }: { track: PlayerTrack }) {
             className={cn(
               "w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
               "disabled:opacity-30 disabled:cursor-not-allowed",
-              isPlaying ? "btn-gradient animate-pulse-glow" : "bg-white/10 hover:bg-white/20"
+              isPlaying
+                ? "btn-gradient animate-pulse-glow"
+                : "bg-white/10 hover:bg-white/20"
             )}
           >
             {isPlaying ? (
@@ -213,11 +74,13 @@ export default function Player({ track }: { track: PlayerTrack }) {
           <div className="flex-1 min-w-0">
             <div
               className="h-2 w-full rounded-full bg-white/[0.08] overflow-hidden cursor-pointer group"
-              onClick={handleSeek}
+              onClick={seek}
             >
               <div
                 className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all relative"
-                style={{ width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
+                style={{
+                  width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%`,
+                }}
               >
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -234,22 +97,53 @@ export default function Player({ track }: { track: PlayerTrack }) {
               defaultValue={volume}
               startingValue={0}
               maxValue={100}
-              onChange={handleVolumeChange}
+              onChange={setVolume}
               leftIcon={
-                <button onClick={toggleMute} className="text-white/60 hover:text-white transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
+                <button
+                  onClick={toggleMute}
+                  className="text-white/60 hover:text-white transition-colors"
+                  aria-label={isMuted ? "Unmute" : "Mute"}
+                >
                   {isMuted || volume === 0 ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M11 5 6 9H2v6h4l5 4V5Z" />
                       <line x1="22" x2="16" y1="9" y2="15" />
                       <line x1="16" x2="22" y1="9" y2="15" />
                     </svg>
                   ) : volume < 50 ? (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M11 5 6 9H2v6h4l5 4V5Z" />
                       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                     </svg>
                   ) : (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <path d="M11 5 6 9H2v6h4l5 4V5Z" />
                       <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                       <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
@@ -266,14 +160,24 @@ export default function Player({ track }: { track: PlayerTrack }) {
       {/* Earning session card */}
       <div className="rounded-2xl p-5 bg-surface/85 border border-white/[0.08]">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white/80">Earning Session</h3>
+          <h3 className="text-sm font-semibold text-white/80">
+            Earning Session
+          </h3>
           <div className="flex items-center gap-2">
             {status === "idle" && <Badge variant="default">Ready</Badge>}
-            {status === "starting" && <Badge variant="paused">Starting...</Badge>}
-            {status === "playing" && <Badge variant="active">Listening</Badge>}
-            {status === "completing" && <Badge variant="paused">Claiming...</Badge>}
+            {status === "starting" && (
+              <Badge variant="paused">Starting...</Badge>
+            )}
+            {status === "playing" && (
+              <Badge variant="active">Listening</Badge>
+            )}
+            {status === "completing" && (
+              <Badge variant="paused">Claiming...</Badge>
+            )}
             {status === "done" && <Badge variant="ended">Ended</Badge>}
-            {status === "rewarded" && <Badge variant="reward">Rewarded</Badge>}
+            {status === "rewarded" && (
+              <Badge variant="reward">Rewarded</Badge>
+            )}
           </div>
         </div>
 
@@ -282,7 +186,9 @@ export default function Player({ track }: { track: PlayerTrack }) {
           <div className="mb-4">
             <div className="flex justify-between text-xs text-white/50 mb-1.5">
               <span>Listen progress</span>
-              <span>{progressSec}s / {minListenSec}s minimum</span>
+              <span>
+                {progressSec}s / {minListenSec}s minimum
+              </span>
             </div>
             <ProgressBar value={sessionProgress} />
           </div>
@@ -301,7 +207,11 @@ export default function Player({ track }: { track: PlayerTrack }) {
         <div className="flex items-center gap-3">
           <button
             onClick={startSession}
-            disabled={status === "starting" || status === "playing" || status === "rewarded"}
+            disabled={
+              status === "starting" ||
+              status === "playing" ||
+              status === "rewarded"
+            }
             className={cn(
               "btn-gradient px-5 py-2.5 rounded-full text-sm font-medium text-white",
               "disabled:opacity-40 disabled:cursor-not-allowed"
@@ -311,8 +221,10 @@ export default function Player({ track }: { track: PlayerTrack }) {
           </button>
 
           <button
-            onClick={() => sessionId && complete(sessionId)}
-            disabled={!sessionId || status === "rewarded" || status === "completing"}
+            onClick={claimReward}
+            disabled={
+              !sessionId || status === "rewarded" || status === "completing"
+            }
             className={cn(
               "px-5 py-2.5 rounded-full text-sm font-medium border border-white/20 text-white/80",
               "hover:bg-white/5 transition-colors",
@@ -339,185 +251,6 @@ export default function Player({ track }: { track: PlayerTrack }) {
             {rewardMsg}
           </div>
         )}
-      </div>
-
-      {/* Bottom media dock */}
-      <div
-        className={cn(
-          "fixed left-0 right-0 bottom-0 z-50 transition-transform duration-300 ease-out",
-          "md:left-24",
-          showDock ? "translate-y-0" : "translate-y-full"
-        )}
-      >
-        <div className="bg-[#181818] border-t border-white/[0.08]">
-          <div className="h-full px-4 py-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-
-            {/* Left: Track info */}
-            <div className="flex items-center gap-3 min-w-0">
-              <Link href={`/track/${track.id}`} className="relative w-14 h-14 rounded-md overflow-hidden flex-shrink-0">
-                <Image src={coverUrl} alt={trackTitle} fill className="object-cover" sizes="56px" />
-              </Link>
-              <div className="min-w-0">
-                <p className="text-sm font-medium truncate hover:underline cursor-pointer">{trackTitle}</p>
-                <p className="text-[11px] text-white/50 truncate">{artistName}</p>
-              </div>
-              <button className="flex-shrink-0 text-amber-400 hover:text-amber-300 transition-colors hidden sm:block" aria-label="Like">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Center: Transport controls + progress */}
-            <div className="flex flex-col items-center gap-1 w-[clamp(300px,40vw,600px)]">
-              {/* Transport buttons */}
-              <div className="flex items-center gap-4">
-                {/* Shuffle */}
-                <button className="text-white/50 hover:text-white transition-colors hidden sm:block" aria-label="Shuffle">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 3h5v5" />
-                    <path d="M4 20 21 3" />
-                    <path d="M21 16v5h-5" />
-                    <path d="M15 15l6 6" />
-                    <path d="M4 4l5 5" />
-                  </svg>
-                </button>
-
-                {/* Previous */}
-                <button className="text-white/70 hover:text-white transition-colors" aria-label="Previous">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" />
-                  </svg>
-                </button>
-
-                {/* Play/Pause */}
-                <button
-                  onClick={togglePlay}
-                  disabled={!playUrl}
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all",
-                    "disabled:opacity-30 disabled:cursor-not-allowed",
-                    "bg-white hover:scale-105 active:scale-95"
-                  )}
-                  aria-label={isPlaying ? "Pause" : "Play"}
-                >
-                  {isPlaying ? (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="black">
-                      <rect x="6" y="4" width="4" height="16" rx="1" />
-                      <rect x="14" y="4" width="4" height="16" rx="1" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="black">
-                      <polygon points="6 3 20 12 6 21 6 3" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* Next */}
-                <button className="text-white/70 hover:text-white transition-colors" aria-label="Next">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
-                  </svg>
-                </button>
-
-                {/* Repeat */}
-                <button className="text-white/50 hover:text-white transition-colors hidden sm:block" aria-label="Repeat">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m17 2 4 4-4 4" />
-                    <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-                    <path d="m7 22-4-4 4-4" />
-                    <path d="M21 13v1a4 4 0 0 1-4 4H3" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Progress bar with timestamps */}
-              <div className="flex items-center gap-2 w-full">
-                <span className="text-[11px] text-white/50 tabular-nums w-10 text-right flex-shrink-0">
-                  {formatDuration(Math.floor(currentTime))}
-                </span>
-                <div
-                  className="h-1 flex-1 rounded-full bg-white/[0.12] overflow-hidden cursor-pointer group hover:h-1.5 transition-all"
-                  onClick={handleSeek}
-                >
-                  <div
-                    className="h-full rounded-full bg-white group-hover:bg-amber-400 transition-colors relative"
-                    style={{ width: `${audioDuration > 0 ? (currentTime / audioDuration) * 100 : 0}%` }}
-                  >
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-                <span className="text-[11px] text-white/50 tabular-nums w-10 flex-shrink-0">
-                  {formatDuration(Math.floor(audioDuration))}
-                </span>
-              </div>
-            </div>
-
-            {/* Right: Utility icons + volume */}
-            <div className="flex items-center justify-end gap-3">
-              {/* Queue */}
-              <button className="text-white/50 hover:text-white transition-colors hidden lg:block" aria-label="Queue">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 6h18" />
-                  <path d="M3 12h18" />
-                  <path d="M3 18h12" />
-                </svg>
-              </button>
-
-              {/* Lyrics */}
-              <button className="text-white/50 hover:text-white transition-colors hidden lg:block" aria-label="Lyrics">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" x2="12" y1="19" y2="22" />
-                </svg>
-              </button>
-
-              {/* Volume slider */}
-              <div className="hidden md:flex items-center w-32 flex-shrink-0">
-                <ElasticSlider
-                  defaultValue={volume}
-                  startingValue={0}
-                  maxValue={100}
-                  onChange={handleVolumeChange}
-                  leftIcon={
-                    <button onClick={toggleMute} className="text-white/50 hover:text-white transition-colors" aria-label={isMuted ? "Unmute" : "Mute"}>
-                      {isMuted || volume === 0 ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-                          <line x1="22" x2="16" y1="9" y2="15" />
-                          <line x1="16" x2="22" y1="9" y2="15" />
-                        </svg>
-                      ) : volume < 50 ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-                          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 5 6 9H2v6h4l5 4V5Z" />
-                          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                          <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-                        </svg>
-                      )}
-                    </button>
-                  }
-                  rightIcon={<></>}
-                />
-              </div>
-
-              {/* Fullscreen / expand */}
-              <button className="text-white/50 hover:text-white transition-colors hidden lg:block" aria-label="Expand">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M15 3h6v6" />
-                  <path d="M9 21H3v-6" />
-                  <path d="M21 3l-7 7" />
-                  <path d="M3 21l7-7" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

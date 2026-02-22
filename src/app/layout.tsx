@@ -7,6 +7,7 @@ import {
 import { Geist, Geist_Mono } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import AppTopBar from "@/components/AppTopBar";
+import PlayerShell from "@/components/PlayerShell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,13 +38,15 @@ export default function RootLayout({
         >
           <SignedOut>{children}</SignedOut>
           <SignedIn>
-            <Sidebar />
-            <main className="md:ml-24 min-h-screen pb-20 md:pb-0">
-              <AppTopBar />
-              <div className="px-4 md:px-8 py-6">
-                {children}
-              </div>
-            </main>
+            <PlayerShell>
+              <Sidebar />
+              <main className="md:ml-24 min-h-screen pb-28 md:pb-20">
+                <AppTopBar />
+                <div className="px-4 md:px-8 py-6">
+                  {children}
+                </div>
+              </main>
+            </PlayerShell>
           </SignedIn>
         </body>
       </html>
