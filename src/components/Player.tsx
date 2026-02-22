@@ -5,15 +5,12 @@ import { formatDuration, cn } from "@/lib/utils";
 import { usePlayer, type PlayerTrack } from "@/contexts/PlayerContext";
 import Badge from "@/components/ui/Badge";
 import ProgressBar from "@/components/ui/ProgressBar";
-import VolumeSlider from "@/components/ui/VolumeSlider";
 
 export default function Player({ track }: { track: PlayerTrack }) {
   const {
     isPlaying,
     currentTime,
     audioDuration,
-    volume,
-    isMuted,
     playUrl,
     sessionId,
     progressSec,
@@ -23,8 +20,6 @@ export default function Player({ track }: { track: PlayerTrack }) {
     loadTrack,
     togglePlay,
     seek,
-    setVolume,
-    toggleMute,
     startSession,
     claimReward,
   } = usePlayer();
@@ -91,16 +86,6 @@ export default function Player({ track }: { track: PlayerTrack }) {
             </div>
           </div>
 
-          {/* Volume control */}
-          <div className="hidden sm:flex items-center w-36 flex-shrink-0">
-            <VolumeSlider
-              volume={volume}
-              isMuted={isMuted}
-              onVolumeChange={setVolume}
-              onToggleMute={toggleMute}
-              iconSize="md"
-            />
-          </div>
         </div>
       </div>
 
