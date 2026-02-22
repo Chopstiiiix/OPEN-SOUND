@@ -17,6 +17,7 @@ export interface PillNavProps {
   className?: string;
   ease?: string;
   baseColor?: string;
+  navBgColor?: string;
   pillColor?: string;
   hoveredPillTextColor?: string;
   pillTextColor?: string;
@@ -29,6 +30,7 @@ export default function PillNav({
   className = "",
   ease = "power3.easeOut",
   baseColor = "#fff",
+  navBgColor,
   pillColor = "#060010",
   hoveredPillTextColor = "#060010",
   pillTextColor,
@@ -150,6 +152,7 @@ export default function PillNav({
 
   const cssVars = {
     "--base": baseColor,
+    "--nav-bg": navBgColor ?? "rgba(255, 255, 255, 0.06)",
     "--pill-bg": pillColor,
     "--hover-text": hoveredPillTextColor,
     "--pill-text": resolvedPillTextColor,

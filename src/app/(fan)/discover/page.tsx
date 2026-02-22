@@ -72,6 +72,7 @@ export default async function Discover() {
           items={chipItems}
           ease="power2.easeOut"
           baseColor="#f59e0b"
+          navBgColor="rgba(120, 70, 0, 0.35)"
           pillColor="rgba(255, 255, 255, 0.11)"
           hoveredPillTextColor="#000000"
           pillTextColor="rgba(255, 255, 255, 0.8)"
